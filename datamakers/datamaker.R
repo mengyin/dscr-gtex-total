@@ -1,3 +1,41 @@
+# datamaker: a function to generate a G*(2N) GTEx count matrix, with G genes and 2N samples for 2 groups.
+# First N samples for group/condition A, and the rest N samples for group B.
+
+# Input: args is a list of arguments:
+# - path: (Required!) Data path (I put the GTEx data files under the directory path/gtex/).
+# - tissue: (Required!) String of one tissue name, or a vector of 2 tissue names. 
+#           If inputting one tissue name, then all 2N samples are selected from this tissue's sample.
+#           If inputting two tissue names, then first N samples are selected from tissue1 
+#           and last N samples from tissue2 or from a mixture of tissue1 and tissue2 
+#           (when breaksample==TRUE & 0<nullpi<1).
+# - Nsamp: N, Number of samples in each group (so the total number of samples is 2*N). 
+#          If Nsamp==NULL, select all samples of the tissue(s).
+# - Ngene: Number of top high-expressed genes that will be selected. If Ngene==NULL, select all genes.
+# - breaksample: Flag, whether select each gene's counts from different GTEx samples. 
+#                This will break the possible within sample correlation. The default value is FALSE.
+# - poisthin: Flag, whether use Poisson thinning to change some counts. 
+#             Need specify 2 parameters for thinning: log2foldmean, log2foldsd,
+#             and the proportion of genes for thinning: nullpi. The default value is FALSE.
+# - log2foldmean: Only works when poisthin==TRUE. Mean parameter for log2-fold change.
+# - log2foldsd: Only works when poisthin==TRUE. SD parameter for log2-fold change.
+# - nullpi: Proportion of genes that are nulls. 
+#           Only works when tissue is one tissue name and poisthin==TRUE, 
+#           or tissue contains two tissue names and breaksample==TRUE.
+# - pseudocounts: Add pseudocounts to the count matrix. The default value is 1.
+# - RUV.k: Number of surrogate variables for RUV. The default value is round(log2(Nsamp)).
+
+# Output: a list of input info and meta info for dscr.
+# - input: a list of G*2N count matrix (count) and a 2N vector of group assignment (condition), 
+#          and estimated effects (betahat.XXX), sd (sebetahat.XXX) and degree of freedom (df.XXX)
+#          from several different methods.
+# - meta: a list of the subsample index of selected GTEx samples (subsample), the true null/alternative
+#         info for each gene (null), and the input arguments of datamaker function (after setting default).
+
+# Example: 
+# Compare 50 Lung samples against 50 Ovary samples (only select top 10000 highly-expressed genes):
+# args=list(tissue=c("Lung","Ovary"), Nsamp=50, Ngene=10000, path="/mnt/lustre/home/mengyin")
+# More examples in https://github.com/mengyin/dscr-gtex-total/blob/master/scenarios.R.
+
 library(edgeR)
 library(limma)
 library(RUVSeq)
@@ -6,13 +44,21 @@ library(DESeq)
 
 datamaker = function(args){  
   dfargs = default_datamaker_args(args)
-  rawdata1 = read.table(paste0(path,"/dscr-gtex/",dfargs$tissue[1],".txt"),header=TRUE)
+  
+  # rawdata1 = readtissue(dfargs$path, dfargs$tissue[1])
+  rawdata1 = read.table(paste0(dfargs$path,"/gtex/",dfargs$tissue[1],".txt"),header=TRUE)
   
   if (length(dfargs$tissue)>1){
-    rawdata2 = read.table(paste0(path,"/dscr-gtex/",dfargs$tissue[2],".txt"),header=TRUE)
+    # rawdata2 = readtissue(dfargs$path, dfargs$tissue[2])
+    rawdata2 = read.table(paste0(dfargs$path,"/gtex/",dfargs$tissue[2],".txt"),header=TRUE)
+    
+    if (is.null(dfargs$Nsamp)){
+      dfargs$Nsamp = min(dim(rawdata1)[2],dim(rawdata2)[2])
+    }
     if (dim(rawdata1)[2]<dfargs$Nsamp | dim(rawdata2)[2]<dfargs$Nsamp){
       stop("Not enough samples in the raw dataset!")
     }
+    
     
     if (dfargs$nullpi==0){
       # All genes are alternatives
@@ -41,9 +87,13 @@ datamaker = function(args){
       subsample = cbind(subsample1, subsample2)
     }
   }else{
+    if (is.null(dfargs$Nsamp)){
+      dfargs$Nsamp = floor(dim(rawdata1)[2]/2)
+    }
     if (dim(rawdata1)[2] < 2*dfargs$Nsamp){
       stop("Not enough samples in the raw dataset!")
     }
+    
     
     temp = selectsample(rawdata1, 2*dfargs$Nsamp, dfargs$breaksample)
     counts = temp$counts
@@ -85,7 +135,7 @@ datamaker = function(args){
   # Quasi-binomial glm
   qb = quasi_binom(counts, condition)
   
-  # Myrna & Quasi-binomial glm
+  # Myrna (Langmead et al. '10) & Quasi-binomial glm 
   # Use log(75th quantile of samples' counts) as covariate
   W.Myrna = apply(counts,2,function(x) log(quantile(x[x>0],0.75)))
   Myrnaqb = quasi_binom(counts, condition, W=W.Myrna)
@@ -108,8 +158,7 @@ datamaker = function(args){
   DESeqglm = DESeq_glmest(counts, condition, dfargs)
   
   # meta data
-  meta = list(subsample=subsample, null=null, 
-              dfargs=dfargs)
+  meta = list(subsample=subsample, null=null, dfargs=dfargs)
   
   # input data
   input = list(counts=counts, condition=condition,
@@ -160,7 +209,7 @@ default_datamaker_args = function(args){
     }
   }
   
-  # RUV.k: number of surrogate variables for SVA
+  # RUV.k: number of surrogate variables for RUV.
   if (is.null(args$RUV.k)){
     args$RUV.k = round(log2(args$Nsamp))
   }
@@ -312,7 +361,7 @@ sampleingene = function(gene, Nsamp){
   return(c(gene[sample],sample))
 }
 
-# randomly select samples
+# Randomly select samples
 # counts: full count matrix
 # Nsamp: # of samples wanted
 # breaksample: flag, if select different samples for each gene
@@ -398,4 +447,19 @@ DESeq_glmest = function(counts, condition, args){
   }
   return(list(betahat=betahat.DESeqglm, sebetahat=sebetahat.DESeqglm,
               df=df.DESeqglm)) 
+}
+
+# Extract dataset for a specific tissue from the GTEx reads txt file
+# Note: use GTEx_Analysis_v6_RNA-seq_RNA-SeQCv1.1.8_gene_reads.gct_new.txt,
+# which removes the first 3 lines from GTEx_Analysis_v6_RNA-seq_RNA-SeQCv1.1.8_gene_reads.gct.txt
+readtissue = function(path, tissue){
+  tis = read.table(paste0(path,"/gtex/sample_tissue.txt"), header=TRUE)
+  
+  tissue.idx = grep(tissue,tis[,2],fixed=TRUE)
+  cols = rep("NULL",dim(tis)[1])
+  cols[tissue.idx]="numeric"
+  
+  data = read.table(paste0(path,"/gtex/GTEx_Analysis_v6_RNA-seq_RNA-SeQCv1.1.8_gene_reads.gct_new.txt"),
+                    colClasses = cols, header = TRUE)
+  return(data)
 }

@@ -10,7 +10,7 @@ deseq2.wrapper = function(input,args){
   dds = estimateSizeFactors(dds)
   dds = estimateDispersions(dds)
   dds = nbinomWaldTest(dds)
-  res = results(dds)
+  res = results(dds,cooksCutoff=FALSE)
   pvalue = res$pvalue
   qvalue = rep(NA,length(pvalue))
   qvalue[!is.na(pvalue)] = qvalue(pvalue[!is.na(pvalue)])$qval
