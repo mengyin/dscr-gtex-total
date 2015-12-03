@@ -46,11 +46,11 @@ datamaker = function(args){
   dfargs = default_datamaker_args(args)
   
   # rawdata1 = readtissue(dfargs$path, dfargs$tissue[1])
-  rawdata1 = read.table(paste0(dfargs$path,"/gtex/",dfargs$tissue[1],".txt"),header=TRUE)
+  rawdata1 = read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[1],".txt"),header=TRUE)
   
   if (length(dfargs$tissue)>1){
     # rawdata2 = readtissue(dfargs$path, dfargs$tissue[2])
-    rawdata2 = read.table(paste0(dfargs$path,"/gtex/",dfargs$tissue[2],".txt"),header=TRUE)
+    rawdata2 = read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),header=TRUE)
     
     if (is.null(dfargs$Nsamp)){
       dfargs$Nsamp = min(dim(rawdata1)[2],dim(rawdata2)[2])
@@ -143,19 +143,27 @@ datamaker = function(args){
   offset.Myrnaoff = apply(counts,2,function(x) quantile(x[x>0],0.75))
   Myrnaoffqb = quasi_binom(counts, condition, W=NULL, offset=offset.Myrnaoff)
   
+  # RUV & voom
+  halfnull = rep(0,length(null))  # Use half of the true nulls to do supervised RUV/SVA
+  halfnull[which(null==1)[1:floor(length(which(null==1))/2)]] = 1
+  W.RUV = RUV_factor(counts, dfargs, halfnull)
+  RUVvoom = voom_transform(counts, condition, W=W.RUV)
+  
+  # SVA & voom
+  W.SVA = SVA_factor(counts, condition, dfargs, halfnull)
+  SVAvoom = voom_transform(counts, condition, W=W.SVA)
+  
   # RUV & quasi-binomial glm
-  W.RUV = RUV_factor(counts, dfargs, null)
   RUVqb = quasi_binom(counts, condition, W=W.RUV)
   
   # SVA & quasi-binomial glm
-  W.SVA = SVA_factor(counts, condition, dfargs, null)
   SVAqb = quasi_binom(counts, condition, W=W.SVA)
   
   # Get sebetahat from edgeR.glm (infer from betahat & pval)
   edgeRglm = edgeR_glmest(counts, condition, dfargs)
   
-  # Get sebetahat from DESeq.glm (infer from betahat & pval)
-  DESeqglm = DESeq_glmest(counts, condition, dfargs)
+  # Get sebetahat from DESeq2 (infer from betahat & pval)
+  DESeq2glm = DESeq2_glmest(counts, condition, dfargs)
   
   # meta data
   meta = list(subsample=subsample, null=null, dfargs=dfargs)
@@ -163,13 +171,15 @@ datamaker = function(args){
   # input data
   input = list(counts=counts, condition=condition,
                v=voom$v, betahat.voom=voom$betahat, sebetahat.voom=voom$sebetahat, df.voom=voom$df,
+               betahat.RUVvoom=RUVvoom$betahat, sebetahat.RUVvoom=RUVvoom$sebetahat, df.RUVvoom=RUVvoom$df, W.RUV=W.RUV,
+               betahat.SVAvoom=SVAvoom$betahat, sebetahat.SVAvoom=SVAvoom$sebetahat, df.SVAvoom=SVAvoom$df, W.SVA=W.SVA,
                betahat.qb=qb$betahat, sebetahat.qb=qb$sebetahat, df.qb=qb$df, dispersion.qb=qb$dispersion,
                betahat.RUVqb=RUVqb$betahat, sebetahat.RUVqb=RUVqb$sebetahat, dispersion.RUVqb=RUVqb$dispersion, df.RUVqb=RUVqb$df, W.RUV=W.RUV,
                betahat.SVAqb=SVAqb$betahat, sebetahat.SVAqb=SVAqb$sebetahat, dispersion.SVAqb=SVAqb$dispersion, df.SVAqb=SVAqb$df, W.SVA=W.SVA,
                betahat.Myrnaqb=Myrnaqb$betahat, sebetahat.Myrnaqb=Myrnaqb$sebetahat, dispersion.Myrnaqb=Myrnaqb$dispersion, df.Myrnaqb=Myrnaqb$df, W.Myrna=W.Myrna,
                betahat.Myrnaoffqb=Myrnaoffqb$betahat, sebetahat.Myrnaoffqb=Myrnaoffqb$sebetahat, dispersion.Myrnaoffqb=Myrnaoffqb$dispersion, df.Myrnaoffqb=Myrnaoffqb$df, offset.Myrnaoff=offset.Myrnaoff,
                betahat.edgeRglm=edgeRglm$betahat, sebetahat.edgeRglm=edgeRglm$sebetahat, df.edgeRglm=edgeRglm$df,
-               betahat.DESeqglm=DESeqglm$betahat, sebetahat.DESeqglm=DESeqglm$sebetahat, df.DESeqglm=DESeqglm$df)
+               betahat.DESeq2glm=DESeq2glm$betahat, sebetahat.DESeq2glm=DESeq2glm$sebetahat, df.DESeq2glm=DESeq2glm$df)
   
   data = list(meta=meta,input=input)
   return(data)
@@ -231,7 +241,7 @@ pois_thinning = function(counts, args, null){
     # thin group A
     counts[which(!null)[log2foldchanges>0],1:args$Nsamp]=matrix(rbinom(sum(log2foldchanges>0)*args$Nsamp, 
                                                                        size=c(as.matrix(counts[which(!null)[log2foldchanges>0],1:args$Nsamp])),
-                                                                       prob=rep(1/foldchanges[log2foldchanges>0],Nsamp)),ncol=args$Nsamp)
+                                                                       prob=rep(1/foldchanges[log2foldchanges>0],args$Nsamp)),ncol=args$Nsamp)
     # thin group B
     counts[which(!null)[log2foldchanges<0],(args$Nsamp+1):(2*args$Nsamp)]=matrix(rbinom(sum(log2foldchanges<0)*args$Nsamp, 
                                                                                         size=c(as.matrix(counts[which(!null)[log2foldchanges<0],
@@ -245,7 +255,7 @@ pois_thinning = function(counts, args, null){
 
 # Mix null and alternative genes from different samples
 mix_sample = function(counts, args, null, subsample){
-  if(args$nullpi<1 & args$nullpi>0){
+  if(args$nullpi<1 & args$nullpi>0 & args$breaksample==TRUE){
     newcounts = matrix(rep(0, args$Ngene*2*args$Nsamp),nrow=args$Ngene)
     newcounts[as.logical(null),] = counts[as.logical(null),1:(2*args$Nsamp)]
     newcounts[!null,] = counts[!null,c(1:args$Nsamp,(2*args$Nsamp+1):(3*args$Nsamp))]
@@ -260,16 +270,23 @@ mix_sample = function(counts, args, null, subsample){
 }
 
 # Voom transformation
-voom_transform = function(counts, condition){
-  
+voom_transform = function(counts, condition, W=NULL){
   dgecounts = calcNormFactors(DGEList(counts=counts,group=condition))
   
-  design = model.matrix(~condition)
+  if (is.null(W)){
+    design = model.matrix(~condition)
+  }else{
+    design = model.matrix(~condition+W)
+  }
+  
   v = voom(dgecounts,design,plot=FALSE)
-  zdat.voom = apply(cbind(v$E,v$weights),1,wls.wrapper,g=condition)
-  betahat.voom = zdat.voom[1,]
-  sebetahat.voom = zdat.voom[2,]
-  df.voom = length(condition)-2
+  lim = lmFit(v)
+  #zdat.voom = apply(cbind(v$E,v$weights),1,wls.wrapper,g=condition)
+  #betahat.voom = zdat.voom[1,]
+  #sebetahat.voom = zdat.voom[2,]
+  betahat.voom = lim$coefficients[,2]
+  sebetahat.voom = lim$stdev.unscaled[,2]*lim$sigma
+  df.voom = length(condition)-2-!is.null(W)
   
   return(list(betahat=betahat.voom, sebetahat=sebetahat.voom, df=df.voom, v=v))
 }
@@ -384,8 +401,9 @@ RUV_factor = function(counts, args, null){
   if (sum(null)>0){
     controls = rownames(seq)
     differences = matrix(data=c(1:args$Nsamp, (args$Nsamp+1):(2*args$Nsamp)), byrow=TRUE, nrow=2)
-    seqRUVs = RUVs(seq, controls, k=args$RUV.k, differences)
-    return(W=pData(seqRUVs)$W_1)
+    #seqRUV = RUVs(seq, controls, k=args$RUV.k, differences)
+    seqRUV = RUVg(seq, controls, k=args$RUV.k)
+    return(W=pData(seqRUV)$W_1)
   }else{
     return(W=NULL)
   }
@@ -448,6 +466,25 @@ DESeq_glmest = function(counts, condition, args){
   return(list(betahat=betahat.DESeqglm, sebetahat=sebetahat.DESeqglm,
               df=df.DESeqglm)) 
 }
+
+# Get sebetahat from DESeq2 (infer from betahat & pval)
+DESeq2_glmest = function(counts, condition, args){
+  cond = input$condition
+  dds = DESeqDataSetFromMatrix(input$counts+args$pseudocounts, DataFrame(cond), ~cond)
+  dds = estimateSizeFactors(dds)
+  dds = estimateDispersions(dds)
+  dds = nbinomWaldTest(dds)
+  res = results(dds,cooksCutoff=FALSE)
+  pvalue = res$pvalue
+  betahat.DESeq2 = res$log2FoldChange
+  df.DESeq2 = length(condition)-2
+  tscore = qt(1-pvalue/2,df=df.DESeq2)
+  sebetahat.DESeq2 = abs(betahat.DESeq2/tscore)
+  
+  return(list(betahat=betahat.DESeq2, sebetahat=sebetahat.DESeq2,
+              df=df.DESeq2)) 
+}
+
 
 # Extract dataset for a specific tissue from the GTEx reads txt file
 # Note: use GTEx_Analysis_v6_RNA-seq_RNA-SeQCv1.1.8_gene_reads.gct_new.txt,

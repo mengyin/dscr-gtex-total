@@ -1,9 +1,26 @@
 choose.ash.parameters <- function(input, args) {
+  # Assuming that sebetahat/scale are exchangeable
+  # For voom transformation, scale is not constant
+  scale = rep(1, length(input$sebetahat.voom))
+  if ((args$transform=="voom" | args$transform=="RUVvoom" | args$transform=="SVAvoom")
+      & args$scaled==TRUE){
+    lim = lmFit(input$v)
+    scale = lim$stdev.unscaled[,2]
+  }
+  
   if (args$transform == "voom") {
-    betahat <- input$betahat.voom
     sebetahat <- input$sebetahat.voom
+    betahat <- input$betahat.voom
     df <- input$df.voom
-  } else if (args$transform == "quasibinom") {
+  }else if (args$transform == "RUVvoom"){
+    sebetahat <- input$sebetahat.RUVvoom
+    betahat <- input$betahat.RUVvoom
+    df <- input$df.RUVvoom
+  }else if (args$transform == "SVAvoom"){
+    sebetahat <- input$sebetahat.SVAvoom
+    betahat <- input$betahat.SVAvoom
+    df <- input$df.SVAvoom
+  }else if (args$transform == "quasibinom") {
     betahat <- input$betahat.qb
     sebetahat <- input$sebetahat.qb
     df <- input$df.qb
@@ -31,7 +48,11 @@ choose.ash.parameters <- function(input, args) {
     betahat <- input$betahat.DESeqglm
     sebetahat <- input$sebetahat.DESeqglm
     df <- input$df.DESeqglm
+  } else if (args$transform == "DESeq2glm") {
+    betahat <- input$betahat.DESeq2glm
+    sebetahat <- input$sebetahat.DESeq2glm
+    df <- input$df.DESeq2glm
   }
   
-  return(list(betahat = betahat, sebetahat = sebetahat, df = df))
+  return(list(betahat = betahat, sebetahat = sebetahat, df = df, scale=scale))
 } 

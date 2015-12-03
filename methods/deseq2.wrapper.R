@@ -1,7 +1,6 @@
-deseq2.wrapper = function(input,args){
-  library(DESeq2)
-  library(qvalue)
-  
+library(DESeq2)
+library(qvalue)
+deseq2.wrapper = function(input,args){ 
   if(is.null(args$pseudocounts)){
     args$pseudocounts = 1
   }
