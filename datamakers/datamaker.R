@@ -469,8 +469,8 @@ DESeq_glmest = function(counts, condition, args){
 
 # Get sebetahat from DESeq2 (infer from betahat & pval)
 DESeq2_glmest = function(counts, condition, args){
-  cond = input$condition
-  dds = DESeqDataSetFromMatrix(input$counts+args$pseudocounts, DataFrame(cond), ~cond)
+  cond = condition
+  dds = DESeqDataSetFromMatrix(counts+args$pseudocounts, DataFrame(cond), ~cond)
   dds = estimateSizeFactors(dds)
   dds = estimateDispersions(dds)
   dds = nbinomWaldTest(dds)
