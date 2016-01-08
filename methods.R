@@ -1,24 +1,24 @@
 # Methods: 
 sourceDir("methods")
 
-# addMethod(dsc_gtex,name="DESeq",fn=deseq.wrapper,outputtype="qval_output",args=list(exacttest=TRUE))
-# addMethod(dsc_gtex,name="DESeq.glm",fn=deseq.wrapper,outputtype="qval_output",args=list(exacttest=FALSE))
-addMethod(dsc_gtex,name="DESeq2",fn=deseq2.wrapper,outputtype="qval_output")
+# addMethod(dsc_gtex,name="DESeq",fn=deseq.wrapper,outputtype="pval_output",args=list(exacttest=TRUE))
+# addMethod(dsc_gtex,name="DESeq.glm",fn=deseq.wrapper,outputtype="pval_output",args=list(exacttest=FALSE))
+addMethod(dsc_gtex,name="DESeq2",fn=deseq2.wrapper,outputtype="pval_output")
 
-addMethod(dsc_gtex,name="edgeR",fn=edger.wrapper,outputtype="qval_output",args=list(exacttest=TRUE))
-addMethod(dsc_gtex,name="edgeR.glm",fn=edger.wrapper,outputtype="qval_output",args=list(exacttest=FALSE))
-addMethod(dsc_gtex,name="RUV+edgeR.glm",fn=edger.wrapper,outputtype="qval_output",
+addMethod(dsc_gtex,name="edgeR",fn=edger.wrapper,outputtype="pval_output",args=list(exacttest=TRUE))
+addMethod(dsc_gtex,name="edgeR.glm",fn=edger.wrapper,outputtype="pval_output",args=list(exacttest=FALSE))
+addMethod(dsc_gtex,name="RUV+edgeR.glm",fn=edger.wrapper,outputtype="pval_output",
           args=list(exacttest=FALSE,RUV=TRUE))
-addMethod(dsc_gtex,name="SVA+edgeR.glm",fn=edger.wrapper,outputtype="qval_output",
+addMethod(dsc_gtex,name="SVA+edgeR.glm",fn=edger.wrapper,outputtype="pval_output",
           args=list(exacttest=FALSE,SVA=TRUE))
 
-addMethod(dsc_gtex,name="voom+limma",fn=limma.wrapper,outputtype="qval_output",
+addMethod(dsc_gtex,name="voom+limma",fn=limma.wrapper,outputtype="pval_output",
           args=list(transform="voom",robust=FALSE))
-addMethod(dsc_gtex,name="voom+limmaR",fn=limma.wrapper,outputtype="qval_output",
+addMethod(dsc_gtex,name="voom+limmaR",fn=limma.wrapper,outputtype="pval_output",
           args=list(transform="voom",robust=TRUE))
-addMethod(dsc_gtex,name="RUVvoom+limma",fn=limma.wrapper,outputtype="qval_output",
+addMethod(dsc_gtex,name="RUVvoom+limma",fn=limma.wrapper,outputtype="pval_output",
           args=list(transform="RUVvoom",robust=FALSE))
-addMethod(dsc_gtex,name="SVAvoom+limma",fn=limma.wrapper,outputtype="qval_output",
+addMethod(dsc_gtex,name="SVAvoom+limma",fn=limma.wrapper,outputtype="pval_output",
           args=list(transform="SVAvoom",robust=FALSE))
 
 addMethod(dsc_gtex,name="voom+ash",fn=ash.wrapper,outputtype="ash_output",

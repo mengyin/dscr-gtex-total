@@ -220,9 +220,9 @@ default_datamaker_args = function(args){
   }
   
   # RUV.k: number of surrogate variables for RUV.
-  if (is.null(args$RUV.k)){
-    args$RUV.k = round(log2(args$Nsamp))
-  }
+#   if (is.null(args$RUV.k)){
+#     args$RUV.k = round(log2(args$Nsamp))
+#   }
   
   # pseudocounts: add pseudocounts to count matrix
   if (is.null(args$pseudocounts)){
@@ -397,16 +397,24 @@ selectsample = function(counts, Nsamp, breaksample){
 
 # Use RUV to estimate confounding factor
 RUV_factor = function(counts, args, null){
+  W = NULL
   seq = newSeqExpressionSet(as.matrix(counts[as.logical(null),]))
   if (sum(null)>0){
     controls = rownames(seq)
-    differences = matrix(data=c(1:args$Nsamp, (args$Nsamp+1):(2*args$Nsamp)), byrow=TRUE, nrow=2)
-    #seqRUV = RUVs(seq, controls, k=args$RUV.k, differences)
-    seqRUV = RUVg(seq, controls, k=args$RUV.k)
-    return(W=pData(seqRUV)$W_1)
-  }else{
-    return(W=NULL)
+    # differences = matrix(data=c(1:args$Nsamp, (args$Nsamp+1):(2*args$Nsamp)), byrow=TRUE, nrow=2)
+    if (is.null(args$RUV.k)){
+      k = num.sv(counts[as.logical(null),],rep(1,dim(counts)[2]))
+    }else{
+      k = args$RUV.k
+    }
+    
+    if (k>0){
+      #seqRUV = RUVs(seq, controls, k=k, differences)
+      seqRUV = RUVg(seq, controls, k=k)
+      W = as.matrix(pData(seqRUV))
+    }
   }
+  return(W = W) 
 }
 
 # Use SVA to estimate confounding factor

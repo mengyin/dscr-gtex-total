@@ -22,7 +22,6 @@ deseq.wrapper = function(input,args){
     fit0 = fitNbinomGLMs( cds, count ~ 1 )
     pvalue = nbinomGLMTest( fit1, fit0 )
   }
-  qvalue = qvalue(pvalue)$qval
 
-  return(list(qvalue = qvalue, pvalue=pvalue))
+  return(list(pvalue=pvalue))
 }

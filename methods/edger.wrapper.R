@@ -39,8 +39,7 @@ edger.wrapper = function(input,args){
     fit = glmFit(y,design)
     lrt = glmLRT(fit,coef=2)
     pvalue = lrt$table$PValue
-    qvalue = qvalue(pvalue)$qval
   }
   
-  return(list(qvalue = qvalue, pvalue=pvalue))
+  return(list(pvalue=pvalue))
 }

@@ -7,11 +7,9 @@ limma.wrapper = function(input,args){
   if (args$transform=="voom" | args$transform=="RUVvoom" | args$transform=="SVAvoom"){
     fit = lmFit(input$v)
     fit = eBayes(fit, robust=args$robust)
-  }else{
+  }else if (args$transform=="quasibinom"){
     #fit = lmFit(input$Y, rep(1,dim(input$Y)[2]))
     stop("Cannot use limma to analyze the input.")
   }
-    
-  qvalue = qvalue(fit$p.value[,2])$qval
-  return(list(qvalue = qvalue))
+  return(list(pvalue = fit$p.value[,2]))
 }

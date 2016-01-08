@@ -1,6 +1,7 @@
 library(DESeq2)
 library(qvalue)
-deseq2.wrapper = function(input,args){ 
+deseq2.wrapper = function(input,args){
+
   if(is.null(args$pseudocounts)){
     args$pseudocounts = 1
   }
@@ -9,11 +10,8 @@ deseq2.wrapper = function(input,args){
   dds = estimateSizeFactors(dds)
   dds = estimateDispersions(dds)
   dds = nbinomWaldTest(dds)
-  res = results(dds,cooksCutoff=FALSE)
+  res = results(dds,cooksCutoff=FALSE,independentFiltering=FALSE)
   pvalue = res$pvalue
-  qvalue = rep(NA,length(pvalue))
-  qvalue[!is.na(pvalue)] = qvalue(pvalue[!is.na(pvalue)])$qval
   
-  
-  return(list(qvalue = qvalue, pvalue=pvalue))
+  return(list(pvalue=pvalue))
 }
