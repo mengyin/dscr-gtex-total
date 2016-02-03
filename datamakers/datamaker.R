@@ -41,16 +41,23 @@ library(limma)
 library(RUVSeq)
 library(sva)
 library(DESeq)
+library(data.table)
 
 datamaker = function(args){  
   dfargs = default_datamaker_args(args)
   
   # rawdata1 = readtissue(dfargs$path, dfargs$tissue[1])
-  rawdata1 = read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[1],".txt"),header=TRUE)
+  # rawdata1 = read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[1],".txt"),header=TRUE)
+  rawdata1 = as.matrix(fread(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[1],".txt"),header=FALSE,drop=1,skip=1))
+  colnames(rawdata1) = as.character(read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[1],".txt"),
+                                               nrows=1,stringsAsFactors=FALSE))
   
   if (length(dfargs$tissue)>1){
     # rawdata2 = readtissue(dfargs$path, dfargs$tissue[2])
-    rawdata2 = read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),header=TRUE)
+    # rawdata2 = read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),header=TRUE)
+    rawdata2 = as.matrix(fread(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),header=FALSE,drop=1,skip=1))
+    colnames(rawdata1) = as.character(read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),
+                                                 nrows=1,stringsAsFactors=FALSE))
     
     if (is.null(dfargs$Nsamp)){
       dfargs$Nsamp = min(dim(rawdata1)[2],dim(rawdata2)[2])
@@ -486,8 +493,7 @@ DESeq2_glmest = function(counts, condition, args){
   pvalue = res$pvalue
   betahat.DESeq2 = res$log2FoldChange
   df.DESeq2 = length(condition)-2
-  tscore = qt(1-pvalue/2,df=df.DESeq2)
-  sebetahat.DESeq2 = abs(betahat.DESeq2/tscore)
+  sebetahat.DESeq2 = res$lfcSE
   
   return(list(betahat=betahat.DESeq2, sebetahat=sebetahat.DESeq2,
               df=df.DESeq2)) 
@@ -506,5 +512,6 @@ readtissue = function(path, tissue){
   
   data = read.table(paste0(path,"/gtex/GTEx_Analysis_v6_RNA-seq_RNA-SeQCv1.1.8_gene_reads.gct_new.txt"),
                     colClasses = cols, header = TRUE)
+  
   return(data)
 }
