@@ -28,7 +28,7 @@
 # - input: a list of G*2N count matrix (count) and a 2N vector of group assignment (condition), 
 #          and estimated effects (betahat.XXX), sd (sebetahat.XXX) and degree of freedom (df.XXX)
 #          from several different methods.
-# - meta: a list of the subsample index of selected GTEx samples (subsample), the true null/alternative
+# - meta: the true null/alternative
 #         info for each gene (null), and the input arguments of datamaker function (after setting default).
 
 # Example: 
@@ -69,29 +69,15 @@ datamaker = function(args){
     
     if (dfargs$nullpi==0){
       # All genes are alternatives
-      temp1 = selectsample(rawdata1, dfargs$Nsamp, dfargs$breaksample)
-      counts1 = temp1$counts
-      subsample1 = temp1$subsample
-      rm(temp1)      
-      temp2 = selectsample(rawdata2, dfargs$Nsamp, dfargs$breaksample)
-      counts2 = temp2$counts
-      subsample2 = temp2$subsample
-      rm(temp2)
+      counts1 = selectsample(rawdata1, dfargs$Nsamp, dfargs$breaksample)     
+      counts2 = selectsample(rawdata2, dfargs$Nsamp, dfargs$breaksample)
       
       counts = cbind(counts1, counts2)
-      subsample = cbind(subsample1, subsample2)
     }else{
       # Some genes are nulls, some are alternatives
-      temp1 = selectsample(rawdata1, 2*dfargs$Nsamp, dfargs$breaksample)
-      counts1 = temp1$counts
-      subsample1 = temp1$subsample
-      rm(temp1)      
-      temp2 = selectsample(rawdata2, dfargs$Nsamp, dfargs$breaksample)
-      counts2 = temp2$counts
-      subsample2 = temp2$subsample
-      rm(temp2)
+      counts1 = selectsample(rawdata1, 2*dfargs$Nsamp, dfargs$breaksample)      
+      counts2 = selectsample(rawdata2, dfargs$Nsamp, dfargs$breaksample)
       counts = cbind(counts1, counts2)
-      subsample = cbind(subsample1, subsample2)
     }
   }else{
     if (is.null(dfargs$Nsamp)){
@@ -101,21 +87,15 @@ datamaker = function(args){
       stop("Not enough samples in the raw dataset!")
     }
     
-    
-    temp = selectsample(rawdata1, 2*dfargs$Nsamp, dfargs$breaksample)
-    counts = temp$counts
-    subsample = temp$subsample
-    rm(temp)
+    counts = selectsample(rawdata1, 2*dfargs$Nsamp, dfargs$breaksample)
   } 
   
   # Remove genes without any reads
-  subsample = subsample[apply(counts,1,sum)>0,]
   counts = counts[apply(counts,1,sum)>0,]
   
   # Take the top Ngene high-expressed genes
   if (!is.null(dfargs$Ngene)){
     dfargs$Ngene = min(dfargs$Ngene, dim(counts)[1])
-    subsample = subsample[sort(order(rowSums(counts),decreasing=TRUE)[1:dfargs$Ngene]),]
     counts = counts[sort(order(rowSums(counts),decreasing=TRUE)[1:dfargs$Ngene]),]
   }
   dfargs$Ngene = dim(counts)[1]
@@ -132,9 +112,7 @@ datamaker = function(args){
   counts = pois_thinning(counts, dfargs, null)
   
   # Mix null and alternative genes from different samples (optional)
-  mix = mix_sample(counts, dfargs, null, subsample)
-  counts = mix$counts
-  subsample = mix$subsample
+  counts = mix_sample(counts, dfargs, null)
   
   # Voom transformation
   voom = voom_transform(counts, condition)
@@ -173,7 +151,7 @@ datamaker = function(args){
   DESeq2glm = DESeq2_glmest(counts, condition, dfargs)
   
   # meta data
-  meta = list(subsample=subsample, null=null, dfargs=dfargs)
+  meta = list(null=null, dfargs=dfargs)
   
   # input data
   input = list(counts=counts, condition=condition,
@@ -261,19 +239,15 @@ pois_thinning = function(counts, args, null){
 }
 
 # Mix null and alternative genes from different samples
-mix_sample = function(counts, args, null, subsample){
+mix_sample = function(counts, args, null){
   if(args$nullpi<1 & args$nullpi>0 & args$breaksample==TRUE){
     newcounts = matrix(rep(0, args$Ngene*2*args$Nsamp),nrow=args$Ngene)
     newcounts[as.logical(null),] = counts[as.logical(null),1:(2*args$Nsamp)]
     newcounts[!null,] = counts[!null,c(1:args$Nsamp,(2*args$Nsamp+1):(3*args$Nsamp))]
     counts = newcounts
-    newsubsample = matrix(rep(0, args$Ngene*2*args$Nsamp),nrow=args$Ngene)
-    newsubsample[as.logical(null),] = subsample[as.logical(null),1:(2*args$Nsamp)]
-    newsubsample[!null,] = subsample[!null,c(1:args$Nsamp,(2*args$Nsamp+1):(3*args$Nsamp))]
-    subsample = newsubsample
-    rm(newcounts); rm(newsubsample);
+    rm(newcounts); 
   }
-  return(list(counts=counts, subsample=subsample))
+  return(counts=counts)
 }
 
 # Voom transformation
@@ -382,7 +356,7 @@ safe.quasibinomial.glm=function(formula,forcebin=FALSE,...){
 # Nsamp: # of samples wanted
 sampleingene = function(gene, Nsamp){
   sample = sample(length(gene),Nsamp)
-  return(c(gene[sample],sample))
+  return(c(gene[sample]e))
 }
 
 # Randomly select samples
@@ -393,13 +367,10 @@ selectsample = function(counts, Nsamp, breaksample){
   if (breaksample==FALSE){
     subsample = sample(1:dim(counts)[2],Nsamp)
     counts = counts[,subsample]
-    subsample = t(matrix(rep(subsample, dim(counts)[1]), ncol=dim(counts)[1]))
   }else{
-    temp = t(apply(counts, 1, sampleingene, Nsamp=Nsamp))
-    counts = temp[,1:Nsamp]
-    subsample = temp[,(Nsamp+1):(2*Nsamp)]
+    counts = t(apply(counts, 1, sampleingene, Nsamp=Nsamp))
   }
-  return(list(counts=counts, subsample=subsample))
+  return(counts)
 }
 
 # Use RUV to estimate confounding factor
