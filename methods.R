@@ -24,9 +24,9 @@ addMethod(dsc_gtex,name="SVAvoom+limma",fn=limma.wrapper,outputtype="pval_output
 addMethod(dsc_gtex,name="voom+ash",fn=ash.wrapper,outputtype="ash_output",
           args=list(transform="voom"))
 addMethod(dsc_gtex,name="RUVvoom+ash",fn=ash.wrapper,outputtype="ash_output",
-          args=list(transform="voom"))
+          args=list(transform="RUVvoom"))
 addMethod(dsc_gtex,name="SVAvoom+ash",fn=ash.wrapper,outputtype="ash_output",
-          args=list(transform="voom"))
+          args=list(transform="SVAvoom"))
 addMethod(dsc_gtex,name="qb+ash",fn=ash.wrapper,outputtype="ash_output",
           args=list(transform="quasibinom"))
 addMethod(dsc_gtex,name="RUVqb+ash",fn=ash.wrapper,outputtype="ash_output",
