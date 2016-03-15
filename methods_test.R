@@ -24,9 +24,11 @@ addMethod(dsc_gtex,name="SVAvoom+limma",fn=limma.wrapper,outputtype="pval_output
 addMethod(dsc_gtex,name="voom+ash",fn=ash.wrapper,outputtype="ash_output",
           args=list(transform="voom"))
 addMethod(dsc_gtex,name="RUVvoom+ash",fn=ash.wrapper,outputtype="ash_output",
-          args=list(transform="voom"))
+          args=list(transform="RUVvoom"))
 addMethod(dsc_gtex,name="SVAvoom+ash",fn=ash.wrapper,outputtype="ash_output",
-          args=list(transform="voom"))
+          args=list(transform="SVAvoom"))
+addMethod(dsc_gtex,name="cate+ash",fn=ash.wrapper,outputtype="ash_output",
+          args=list(transform="cate"))
 addMethod(dsc_gtex,name="qb+ash",fn=ash.wrapper,outputtype="ash_output",
           args=list(transform="quasibinom"))
 addMethod(dsc_gtex,name="RUVqb+ash",fn=ash.wrapper,outputtype="ash_output",
@@ -41,10 +43,6 @@ addMethod(dsc_gtex,name="SVAqb+ash",fn=ash.wrapper,outputtype="ash_output",
 
 addMethod(dsc_gtex,name="voom+jointash.single.u",fn=jointash.wrapper,outputtype="jointash_output",
           args=list(transform="voom",singlecomp=TRUE))
-# addMethod(dsc_gtex,name="voom+jointash.mix.n",fn=jointash.wrapper,outputtype="jointash_output",
-#           args=list(transform="voom",singlecomp=FALSE))
-# addMethod(dsc_gtex,name="voom+jointash.mix.u",fn=jointash.wrapper,outputtype="jointash_output",
-#           args=list(transform="voom",singlecomp=FALSE,mixcompdist="uniform"))
 
 addMethod(dsc_gtex,name="RUVvoom+jointash.single.u",fn=jointash.wrapper,outputtype="jointash_output",
           args=list(transform="RUVvoom",singlecomp=TRUE))
@@ -53,10 +51,6 @@ addMethod(dsc_gtex,name="SVAvoom+jointash.single.u",fn=jointash.wrapper,outputty
 
 addMethod(dsc_gtex,name="qb+jointash.single.u",fn=jointash.wrapper,outputtype="jointash_output",
           args=list(transform="quasibinom",singlecomp=TRUE))
-# addMethod(dsc_gtex,name="qb+jointash.mix.n",fn=jointash.wrapper,outputtype="jointash_output",
-#           args=list(transform="quasibinom",singlecomp=FALSE))
-# addMethod(dsc_gtex,name="qb+jointash.mix.u",fn=jointash.wrapper,outputtype="jointash_output",
-#           args=list(transform="quasibinom",singlecomp=FALSE,mixcompdist="uniform"))
 
 addMethod(dsc_gtex,name="RUVqb+jointash.single.u",fn=jointash.wrapper,outputtype="jointash_output",
           args=list(transform="RUV+quasibinom",singlecomp=TRUE))

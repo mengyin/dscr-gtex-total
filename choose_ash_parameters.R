@@ -51,6 +51,10 @@ choose.ash.parameters <- function(input, args) {
     betahat <- input$betahat.DESeq2glm
     sebetahat <- input$sebetahat.DESeq2glm
     df <- input$df.DESeq2glm
+  } else if (args$transform == "cate") {
+    betahat <- input$betahat.cate
+    sebetahat <- input$sebetahat.cate
+    df <- input$df.cate
   }
   
   return(list(betahat = betahat, sebetahat = sebetahat, df = df, scale=scale))

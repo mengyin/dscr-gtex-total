@@ -22,7 +22,7 @@
 #           Only works when tissue is one tissue name and poisthin==TRUE, 
 #           or tissue contains two tissue names and breaksample==TRUE.
 # - pseudocounts: Add pseudocounts to the count matrix. The default value is 1.
-# - RUV.k: Number of surrogate variables for RUV. The default value is round(log2(Nsamp)).
+# - num.sv: Number of surrogate variables. The default value is estimated by num.sv() in sva package.
 
 # Output: a list of input info and meta info for dscr.
 # - input: a list of G*2N count matrix (count) and a 2N vector of group assignment (condition), 
@@ -41,7 +41,9 @@ library(limma)
 library(RUVSeq)
 library(sva)
 library(DESeq)
+library(DESeq2)
 library(data.table)
+library(cate)
 
 datamaker = function(args){  
   dfargs = default_datamaker_args(args)
@@ -108,11 +110,17 @@ datamaker = function(args){
   null = rep(0,dfargs$Ngene)
   null[sample(dfargs$Ngene, round(dfargs$Ngene*dfargs$nullpi))] = 1  
   
+  # Mix null and alternative genes from different samples (optional)
+  counts = mix_sample(counts, dfargs, null)
+  
   # Poisson thinning (optional)
   counts = pois_thinning(counts, dfargs, null)
   
-  # Mix null and alternative genes from different samples (optional)
-  counts = mix_sample(counts, dfargs, null)
+  # get num.sv
+  if (is.null(dfargs$num.sv)){
+    dfargs$num.sv = num.sv(as.matrix(log(counts+1)), 
+                           mod = stats::model.matrix(~condition), method = "be")
+  }
   
   # Voom transformation
   voom = voom_transform(counts, condition)
@@ -150,12 +158,16 @@ datamaker = function(args){
   # Get sebetahat from DESeq2 (infer from betahat & pval)
   DESeq2glm = DESeq2_glmest(counts, condition, dfargs)
   
+  # cate
+  cateest = cate_est(counts, condition, dfargs, halfnull)
+  
   # meta data
   meta = list(null=null, dfargs=dfargs)
   
   # input data
   input = list(counts=counts, condition=condition,
-               v=voom$v, betahat.voom=voom$betahat, sebetahat.voom=voom$sebetahat, df.voom=voom$df,
+               v=voom$v, RUVv=RUVvoom$v, SVAv=SVAvoom$v,
+               betahat.voom=voom$betahat, sebetahat.voom=voom$sebetahat, df.voom=voom$df,
                betahat.RUVvoom=RUVvoom$betahat, sebetahat.RUVvoom=RUVvoom$sebetahat, df.RUVvoom=RUVvoom$df, W.RUV=W.RUV,
                betahat.SVAvoom=SVAvoom$betahat, sebetahat.SVAvoom=SVAvoom$sebetahat, df.SVAvoom=SVAvoom$df, W.SVA=W.SVA,
                betahat.qb=qb$betahat, sebetahat.qb=qb$sebetahat, df.qb=qb$df, dispersion.qb=qb$dispersion,
@@ -164,7 +176,8 @@ datamaker = function(args){
                betahat.Myrnaqb=Myrnaqb$betahat, sebetahat.Myrnaqb=Myrnaqb$sebetahat, dispersion.Myrnaqb=Myrnaqb$dispersion, df.Myrnaqb=Myrnaqb$df, W.Myrna=W.Myrna,
                betahat.Myrnaoffqb=Myrnaoffqb$betahat, sebetahat.Myrnaoffqb=Myrnaoffqb$sebetahat, dispersion.Myrnaoffqb=Myrnaoffqb$dispersion, df.Myrnaoffqb=Myrnaoffqb$df, offset.Myrnaoff=offset.Myrnaoff,
                betahat.edgeRglm=edgeRglm$betahat, sebetahat.edgeRglm=edgeRglm$sebetahat, df.edgeRglm=edgeRglm$df,
-               betahat.DESeq2glm=DESeq2glm$betahat, sebetahat.DESeq2glm=DESeq2glm$sebetahat, df.DESeq2glm=DESeq2glm$df)
+               betahat.DESeq2glm=DESeq2glm$betahat, sebetahat.DESeq2glm=DESeq2glm$sebetahat, df.DESeq2glm=DESeq2glm$df,
+               betahat.cate=cateest$betahat, sebetahat.cate=cateest$sebetahat, df.cate=cateest$df)
   
   data = list(meta=meta,input=input)
   return(data)
@@ -204,16 +217,11 @@ default_datamaker_args = function(args){
     }
   }
   
-  # RUV.k: number of surrogate variables for RUV.
-#   if (is.null(args$RUV.k)){
-#     args$RUV.k = round(log2(args$Nsamp))
-#   }
-  
   # pseudocounts: add pseudocounts to count matrix
   if (is.null(args$pseudocounts)){
     args$pseudocounts = 1
   }
-  
+
   return(args)
 }
 
@@ -356,7 +364,7 @@ safe.quasibinomial.glm=function(formula,forcebin=FALSE,...){
 # Nsamp: # of samples wanted
 sampleingene = function(gene, Nsamp){
   sample = sample(length(gene),Nsamp)
-  return(c(gene[sample]e))
+  return(c(gene[sample]))
 }
 
 # Randomly select samples
@@ -373,42 +381,32 @@ selectsample = function(counts, Nsamp, breaksample){
   return(counts)
 }
 
-# Use RUV to estimate confounding factor
-RUV_factor = function(counts, args, null){
-  W = NULL
-  seq = newSeqExpressionSet(as.matrix(counts[as.logical(null),]))
-  if (sum(null)>0){
+## Use RUV to estimate confounding factor
+RUV_factor = function(counts, args, null) {
+  seq = EDASeq::newSeqExpressionSet(as.matrix(counts[as.logical(null), ]))
+  if (sum(null) > 0) {
     controls = rownames(seq)
-    # differences = matrix(data=c(1:args$Nsamp, (args$Nsamp+1):(2*args$Nsamp)), byrow=TRUE, nrow=2)
-    if (is.null(args$RUV.k)){
-      k = num.sv(counts[as.logical(null),],rep(1,dim(counts)[2]))
-    }else{
-      k = args$RUV.k
-    }
-    
-    if (k>0){
-      #seqRUV = RUVs(seq, controls, k=k, differences)
-      seqRUV = RUVg(seq, controls, k=k)
-      W = as.matrix(pData(seqRUV))
-    }
+    differences = matrix(data = c(1:args$Nsamp, (args$Nsamp + 1):(2 * args$Nsamp)), 
+                         byrow = TRUE, nrow = 2)
+    seqRUV = RUVSeq::RUVg(seq, controls, k = args$num.sv)
+    return(W = as.matrix(Biobase::pData(seqRUV)))
+  } else {
+    return(W = NULL)
   }
-  return(W = W) 
 }
 
 # Use SVA to estimate confounding factor
-SVA_factor = function(counts, condition, args, null){
+SVA_factor = function(counts, condition, args, null = NULL) {
   mod1 = model.matrix(~condition)
-  mod0 = cbind(mod1[,1])
-  
-  if (args$nullpi>0){
-    svseq = svaseq(counts,mod1,mod0,control=null)
-  }else{
-    svseq = svaseq(counts,mod1,mod0)
+  mod0 = cbind(mod1[, 1]) 
+  if (!is.null(null)) {
+    svseq_out = sva::svaseq(counts, mod1, mod0, control = null, n.sv = args$num.sv)
+  } else {
+    svseq_out = sva::svaseq(as.matrix(counts), mod1, mod0, n.sv = args$num.sv)
   }
-  
-  if(svseq$n.sv>0){
-    return(W = svseq$sv)
-  }else{
+  if (svseq_out$n.sv > 0) {
+    return(W = svseq_out$sv)
+  } else {
     return(W = NULL)
   }
 }
@@ -468,6 +466,20 @@ DESeq2_glmest = function(counts, condition, args){
   
   return(list(betahat=betahat.DESeq2, sebetahat=sebetahat.DESeq2,
               df=df.DESeq2)) 
+}
+
+# Get betahat & sebetahat from cate
+cate_est = function(counts, condition, args, null=NULL){
+  cate_out = cate(~trt, Y = t(log(as.matrix(counts)+1)),
+                  X.data = data.frame(trt = as.numeric(condition) - 1),
+                  r = args$num.sv, fa.method = "ml", adj.method = "rr", 
+                  nc = as.logical(null))
+  
+  return(list(betahat = cate_out$beta, 
+              sebetahat = sqrt(cate_out$beta.cov.row * cate_out$beta.cov.col) / sqrt(args$Nsamp),
+              pvalue = cate_out$beta.p.value,
+              df = NULL))
+  # wald test, so no df
 }
 
 
