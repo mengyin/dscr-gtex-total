@@ -16,8 +16,8 @@ score = function(data, output){
     DP.fsr_005 = mean(qvalue<=0.05,na.rm=TRUE)
     FDP.fsr_005 = sum(data$meta$null==1 & qvalue<=0.05,na.rm=TRUE)/max(sum(qvalue<=0.05,na.rm=TRUE),0.1)
     
-    AUC = auc(roc(output$qvalue,data$meta$null))
-    AUC.fsr = auc(roc(qvalue,data$meta$null))
+    AUC = auc(roc(output$qvalue,factor(data$meta$null)))
+    AUC.fsr = auc(roc(qvalue,factor(data$meta$null)))
     
     res = c(pi0, DP_005, DP.fsr_005, FDP_005, FDP.fsr_005, AUC, AUC.fsr)
     names(res) = c("pi0","DP_005","DP.fsr_005","FDP_005","FDP.fsr_005","AUC","AUC.fsr") 
