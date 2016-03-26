@@ -384,7 +384,7 @@ selectsample = function(counts, Nsamp, breaksample){
 ## Use RUV to estimate confounding factor
 RUV_factor = function(counts, args, null) {
   seq = EDASeq::newSeqExpressionSet(as.matrix(counts[as.logical(null), ]))
-  if (sum(null) > 0) {
+  if (sum(null)>0 & args$num.sv>0) {
     controls = rownames(seq)
     differences = matrix(data = c(1:args$Nsamp, (args$Nsamp + 1):(2 * args$Nsamp)), 
                          byrow = TRUE, nrow = 2)
