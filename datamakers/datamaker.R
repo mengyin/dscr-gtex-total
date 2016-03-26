@@ -248,7 +248,7 @@ pois_thinning = function(counts, args, null){
 
 # Mix null and alternative genes from different samples
 mix_sample = function(counts, args, null){
-  if(args$nullpi<1 & args$nullpi>0 & args$breaksample==TRUE){
+  if(args$nullpi<1 & args$nullpi>0 & args$breaksample==TRUE & args$poisthin==FALSE){
     newcounts = matrix(rep(0, args$Ngene*2*args$Nsamp),nrow=args$Ngene)
     newcounts[as.logical(null),] = counts[as.logical(null),1:(2*args$Nsamp)]
     newcounts[!null,] = counts[!null,c(1:args$Nsamp,(2*args$Nsamp+1):(3*args$Nsamp))]
