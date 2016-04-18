@@ -2,8 +2,14 @@ choose.ash.parameters <- function(input, args) {
   # Assuming that sebetahat/scale are exchangeable
   # For voom transformation, scale is not constant
   scale = rep(1, length(input$sebetahat.voom))
-  if (args$transform=="voom" | args$transform=="RUVvoom" | args$transform=="SVAvoom"){
+  if (args$transform=="voom"){
     lim = lmFit(input$v)
+    scale = lim$stdev.unscaled[,2]
+  }else if (args$transform=="RUVvoom"){
+    lim = lmFit(input$RUVv)
+    scale = lim$stdev.unscaled[,2]
+  }else if (args$transform=="SVAvoom"){
+    lim = lmFit(input$SVAv)
     scale = lim$stdev.unscaled[,2]
   }
   

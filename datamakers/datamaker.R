@@ -275,7 +275,7 @@ voom_transform = function(counts, condition, W=NULL){
   #sebetahat.voom = zdat.voom[2,]
   betahat.voom = lim$coefficients[,2]
   sebetahat.voom = lim$stdev.unscaled[,2]*lim$sigma
-  df.voom = length(condition)-2-!is.null(W)
+  df.voom = length(condition)-2-dim(W)[2]
   
   return(list(betahat=betahat.voom, sebetahat=sebetahat.voom, df=df.voom, v=v))
 }
