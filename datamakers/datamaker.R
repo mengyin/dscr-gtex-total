@@ -388,7 +388,7 @@ RUV_factor = function(counts, args, null) {
     controls = rownames(seq)
     differences = matrix(data = c(1:args$Nsamp, (args$Nsamp + 1):(2 * args$Nsamp)), 
                          byrow = TRUE, nrow = 2)
-    seqRUV = RUVSeq::RUVg(seq, controls, k = args$num.sv)
+    seqRUV = RUVSeq::RUVg(seq, controls, k = min(args$num.sv,sum(null)))
     return(W = as.matrix(Biobase::pData(seqRUV)))
   } else {
     return(W = NULL)
@@ -402,7 +402,7 @@ SVA_factor = function(counts, condition, args, null = NULL) {
   if (!is.null(null)) {
     svseq_out = sva::svaseq(counts, mod1, mod0, control = null, n.sv = args$num.sv)
   } else {
-    svseq_out = sva::svaseq(as.matrix(counts), mod1, mod0, n.sv = args$num.sv)
+    svseq_out = sva::svaseq(as.matrix(counts), mod1, mod0, n.sv = min(args$num.sv,null))
   }
   if (svseq_out$n.sv > 0) {
     return(W = svseq_out$sv)
