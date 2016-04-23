@@ -410,7 +410,9 @@ SVA_factor = function(counts, condition, args, null = NULL) {
     svseq_out = sva::svaseq(as.matrix(counts), mod1, mod0, n.sv = min(args$num.sv,null))
   }
   if (svseq_out$n.sv > 0) {
-    return(W = svseq_out$sv)
+    W = svseq_out$sv
+    W = matrix(W, ncol=svseq_out$sv)
+    return(W)
   } else {
     return(W = NULL)
   }
