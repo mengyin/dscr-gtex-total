@@ -411,7 +411,7 @@ SVA_factor = function(counts, condition, args, null = NULL) {
   }
   if (svseq_out$n.sv > 0) {
     W = svseq_out$sv
-    W = matrix(W, ncol=svseq_out$sv)
+    W = matrix(W, ncol=svseq_out$n.sv)
     return(W)
   } else {
     return(W = NULL)
