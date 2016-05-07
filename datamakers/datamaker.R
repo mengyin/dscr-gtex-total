@@ -58,7 +58,7 @@ datamaker = function(args){
     # rawdata2 = readtissue(dfargs$path, dfargs$tissue[2])
     # rawdata2 = read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),header=TRUE)
     rawdata2 = as.matrix(fread(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),header=FALSE,drop=1,skip=1))
-    colnames(rawdata1) = as.character(read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),
+    colnames(rawdata2) = as.character(read.table(paste0(dfargs$path,"/gtex/tissues/",dfargs$tissue[2],".txt"),
                                                  nrows=1,stringsAsFactors=FALSE))
     
     if (is.null(dfargs$Nsamp)){
