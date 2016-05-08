@@ -404,10 +404,10 @@ RUV_factor = function(counts, args, null) {
 SVA_factor = function(counts, condition, args, null = NULL) {
   mod1 = model.matrix(~condition)
   mod0 = cbind(mod1[, 1]) 
-  if (!is.null(null)) {
+  if (!is.null(null) & sum(null)>0) {
     svseq_out = sva::svaseq(counts, mod1, mod0, control = null, n.sv = args$num.sv)
   } else {
-    svseq_out = sva::svaseq(as.matrix(counts), mod1, mod0, n.sv = min(args$num.sv,null))
+    svseq_out = sva::svaseq(as.matrix(counts), mod1, mod0, n.sv = min(args$num.sv,sum(null)))
   }
   if (svseq_out$n.sv > 0) {
     W = svseq_out$sv
